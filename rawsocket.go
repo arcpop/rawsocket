@@ -12,15 +12,19 @@ type RawSockConn struct {
 }
 
 //CreateRawSocket creates a new RawSocket to send IP packets to the interface.
-func CreateRawSocket(ipHdrInc bool) (*RawSockConn, error)  {
+func CreateRawSocket(ipHdrInc bool, isIPv6 bool) (*RawSockConn, error)  {
+    af := syscall.AF_INET
+    if isIPv6 {
+        af = syscall.AF_INET6
+    }
     if ipHdrInc {
-        fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, 0xFF /* syscall.IPPROTO_RAW */)
+        fd, err := syscall.Socket(af, syscall.SOCK_RAW, 0xFF /* syscall.IPPROTO_RAW */)
         if err != nil {
             return nil, err
         }
         return &RawSockConn{ inner: rawSockConn{ fd: fd } }, nil
     }
-    fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_IP)
+    fd, err := syscall.Socket(af, syscall.SOCK_RAW, syscall.IPPROTO_IP)
     if err != nil {
         return nil, err
     }
