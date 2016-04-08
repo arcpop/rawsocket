@@ -8,7 +8,7 @@ import (
 
 //RawSockConn abstracts the data which is needed to create a raw socket to send packets with IP_HDRINCL
 type RawSockConn struct {
-    fd syscall.Handle
+    inner rawSockConn
 }
 
 //CreateRawSocket creates a new RawSocket to send IP packets to the interface.
@@ -18,16 +18,16 @@ func CreateRawSocket(ipHdrInc bool) (*RawSockConn, error)  {
         if err != nil {
             return nil, err
         }
-        return &RawSockConn{ fd: fd }, nil
+        return &RawSockConn{ inner: rawSockConn{ fd: fd } }, nil
     }
     fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_IP)
     if err != nil {
         return nil, err
     }
-    return &RawSockConn{ fd: fd }, nil
+    return &RawSockConn{ inner: rawSockConn{ fd: fd } }, nil
 }
 
-//WriteTo sends a packet to the destination indicated by ip. Be wary that you need to have an IP header in the buffer b!!!
+//WriteTo sends a packet to the destination indicated by ip. Be wary that you need to have an IP header in the buffer b!
 func (s *RawSockConn) WriteTo(b []byte, ip net.IP) (n int, err error) {
     var sa syscall.Sockaddr
     ip4 := ip.To4()
@@ -45,7 +45,7 @@ func (s *RawSockConn) WriteTo(b []byte, ip net.IP) (n int, err error) {
         copy(sa4.Addr[:], ip4)
         sa = sa4
     }
-    err = syscall.Sendto(s.fd, b, 0, sa)
+    err = syscall.Sendto(s.inner.fd, b, 0, sa)
     if err != nil {
         return
     }
@@ -55,7 +55,7 @@ func (s *RawSockConn) WriteTo(b []byte, ip net.IP) (n int, err error) {
 
 //Close closes the associated resources.
 func (s *RawSockConn) Close() error {
-    return syscall.Close(s.fd)
+    return syscall.Close(s.inner.fd)
 }
 
 
@@ -63,7 +63,7 @@ func (s *RawSockConn) Close() error {
 //the returned sockaddr can't be casted to either ipv4 or ipv6. Better not use that method and use the go implementation. 
 func (s * RawSockConn) ReadFrom(b []byte) (n int, addr net.IP, err error) {
     var from syscall.Sockaddr
-    n, from, err = syscall.Recvfrom(s.fd, b, 0)
+    n, from, err = syscall.Recvfrom(s.inner.fd, b, 0)
     
     if err != nil {
         return
